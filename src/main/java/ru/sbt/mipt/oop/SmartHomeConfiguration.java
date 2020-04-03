@@ -20,9 +20,8 @@ import ru.sbt.mipt.oop.signaling.Signaling;
 import ru.sbt.mipt.oop.storage.HomeConditionGsonStorage;
 import ru.sbt.mipt.oop.storage.HomeConditionStorage;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.IntStream;
 
 
 @Configuration
@@ -61,31 +60,39 @@ public class SmartHomeConfiguration {
     }
 
     @Bean
-    public List<EventHandler> eventHandlers(EventHandler eventDoorHandler, EventHandler eventLightHandler, EventHandler eventHallDoorHandler) {
-        return Arrays.asList(
-                eventDoorHandler,
-                eventLightHandler,
-                eventHallDoorHandler
-        );
+    public SensorEventType LightOn() {
+        return SensorEventType.LIGHT_ON;
     }
 
     @Bean
-    public Map<String, SensorEventType> convertType(){
-        return Map.of(
-                "LightIsOn", SensorEventType.LIGHT_ON,
-                "LightIsOff", SensorEventType.LIGHT_OFF,
-                "DoorIsOpen", SensorEventType.DOOR_OPEN,
-                "DoorIsClosed", SensorEventType.DOOR_CLOSED
-        );
+    public SensorEventType LightOff() {
+        return SensorEventType.LIGHT_OFF;
     }
 
     @Bean
-    public String code() {
-        return "12345";
+    public SensorEventType DoorOpen() {
+        return SensorEventType.DOOR_OPEN;
     }
 
     @Bean
-    public Command activateSignalingCommand(SmartHome smartHome, String code) {
+    public SensorEventType DoorClosed() {
+        return SensorEventType.DOOR_CLOSED;
+    }
+
+    @Bean
+    public Map<String, SensorEventType> convertType(List<SensorEventType> sensorEventTypes){
+        List<String> ccSensorEventTypes = Arrays.asList("LightIsOn", "LightIsOff", "DoorIsOpen", "DoorIsClosed");
+        return IntStream.range(0, ccSensorEventTypes.size())
+                .collect(
+                        HashMap::new,
+                        (m, i) -> m.put(ccSensorEventTypes.get(i), sensorEventTypes.get(i)),
+                        Map::putAll
+                );
+    }
+
+    @Bean
+    public Command activateSignalingCommand(SmartHome smartHome) {
+        String code = "12345";
         return new ActivateSignalingCommand(smartHome, code);
     }
 
@@ -115,40 +122,35 @@ public class SmartHomeConfiguration {
     }
 
     @Bean
-    public RemoteControl remoteControl(Command turnOffLightCommand, Command turnOnLightCommand,
-                                       Command turnOnAlarmCommand, Command turnOnHallLightCommand,
-                                       Command activateSignalingCommand, Command closeHallDoorCommand) {
+    public RemoteControl remoteControl(Collection<Command> collections) {
         SmartRemoteControl remoteControl = new SmartRemoteControl();
-        remoteControl.set("A", turnOffLightCommand);
-        remoteControl.set("B", turnOnLightCommand);
-        remoteControl.set("C", turnOnAlarmCommand);
-        remoteControl.set("D", turnOnHallLightCommand);
-        remoteControl.set("1", activateSignalingCommand);
-        remoteControl.set("2", closeHallDoorCommand);
+        Iterator<Command> iterator = collections.iterator();
+        remoteControl.set("A", iterator.next());
+        remoteControl.set("B", iterator.next());
+        remoteControl.set("C", iterator.next());
+        remoteControl.set("D", iterator.next());
+        remoteControl.set("1", iterator.next());
+        remoteControl.set("2", iterator.next());
         return remoteControl;
     }
 
     @Bean
-    public String rcId() {
-        return "newRemoteControl";
-    }
-
-    @Bean
-    public RemoteControlRegistry remoteControlRegistry(RemoteControl remoteControl, String rcId) {
+    public RemoteControlRegistry remoteControlRegistry(RemoteControl remoteControl) {
+        String rcId = "newRemoteControl";
         RemoteControlRegistry remoteControlRegistry = new RemoteControlRegistry();
         remoteControlRegistry.registerRemoteControl(remoteControl, rcId);
         return remoteControlRegistry;
     }
 
     @Bean
-    public SensorEventsManager sensorEventsManager(SmartHome smartHome, List<EventHandler> eventHandlers) {
+    public SensorEventsManager sensorEventsManager(SmartHome smartHome, List<EventHandler> eventHandlers, Map<String, SensorEventType> convertType) {
         SensorEventsManager sensorEventsManager = new SensorEventsManager();
         sensorEventsManager.registerEventHandler(
                 new SensorEventHandlerAdapter(
                         new SecurityDecorator(
                                 eventHandlers,
                                 smartHome.getSignaling()),
-                        convertType()
+                        convertType
                 )
         );
         return sensorEventsManager;
