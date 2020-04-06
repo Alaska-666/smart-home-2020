@@ -3,6 +3,8 @@ package ru.sbt.mipt.oop;
 import com.coolcompany.smarthome.events.SensorEventsManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import rc.RemoteControl;
+import rc.RemoteControlRegistry;
 import ru.sbt.mipt.oop.adapters.SensorEventHandlerAdapter;
 import ru.sbt.mipt.oop.command.ProvisionalSensorCommandSender;
 import ru.sbt.mipt.oop.command.SensorCommandSender;
@@ -13,6 +15,7 @@ import ru.sbt.mipt.oop.eventhandler.EventHallDoorHandler;
 import ru.sbt.mipt.oop.eventhandler.EventHandler;
 import ru.sbt.mipt.oop.eventhandler.EventLightHandler;
 import ru.sbt.mipt.oop.objects.SmartHome;
+import ru.sbt.mipt.oop.rc.*;
 import ru.sbt.mipt.oop.signaling.Signaling;
 import ru.sbt.mipt.oop.storage.HomeConditionGsonStorage;
 import ru.sbt.mipt.oop.storage.HomeConditionStorage;
@@ -85,6 +88,58 @@ public class SmartHomeConfiguration {
                         (m, i) -> m.put(ccSensorEventTypes.get(i), sensorEventTypes.get(i)),
                         Map::putAll
                 );
+    }
+
+    @Bean
+    public Command activateSignalingCommand(SmartHome smartHome) {
+        String code = "12345";
+        return new ActivateSignalingCommand(smartHome, code);
+    }
+
+    @Bean
+    public Command closeHallDoorCommand(SmartHome smartHome) {
+        return new CloseHallDoorCommand(smartHome);
+    }
+
+    @Bean
+    public Command turnOnHallLightCommand(SmartHome smartHome) {
+        return new TurnOnHallLightCommand(smartHome);
+    }
+
+    @Bean
+    public Command turnOnAlarmCommand(SmartHome smartHome) {
+        return new TurnOnAlarmCommand(smartHome);
+    }
+
+    @Bean
+    public Command turnOnLightCommand(SmartHome smartHome) {
+        return new TurnOnLightCommand(smartHome);
+    }
+
+    @Bean
+    public Command turnOffLightCommand(SmartHome smartHome) {
+        return new TurnOffLightCommand(smartHome);
+    }
+
+    @Bean
+    public RemoteControl remoteControl(Collection<Command> collections) {
+        SmartRemoteControl remoteControl = new SmartRemoteControl();
+        Iterator<Command> iterator = collections.iterator();
+        remoteControl.set("A", iterator.next());
+        remoteControl.set("B", iterator.next());
+        remoteControl.set("C", iterator.next());
+        remoteControl.set("D", iterator.next());
+        remoteControl.set("1", iterator.next());
+        remoteControl.set("2", iterator.next());
+        return remoteControl;
+    }
+
+    @Bean
+    public RemoteControlRegistry remoteControlRegistry(RemoteControl remoteControl) {
+        String rcId = "newRemoteControl";
+        RemoteControlRegistry remoteControlRegistry = new RemoteControlRegistry();
+        remoteControlRegistry.registerRemoteControl(remoteControl, rcId);
+        return remoteControlRegistry;
     }
 
     @Bean
